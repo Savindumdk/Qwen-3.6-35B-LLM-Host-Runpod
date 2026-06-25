@@ -25,17 +25,19 @@ fi
 #
 # CTX_SIZE is the TOTAL KV-cache context shared across PARALLEL_SLOTS, so the
 # effective per-request window is CTX_SIZE / PARALLEL_SLOTS. Defaults below give
-# 2 concurrent requests of ~32K tokens each, which fits comfortably alongside
-# the ~19.5 GB weights on a 48 GB A6000. Raise CTX_SIZE for longer context if
-# VRAM allows; quantize the KV cache (CACHE_TYPE_K/V=q8_0) to stretch it further.
+# ONE request the full 128K context (PARALLEL_SLOTS=1), with the KV cache stored
+# as q8_0 (near-lossless) so it fits alongside the ~19.5 GB weights on a 48 GB
+# A6000 with room to spare. This pairs with a client (Zoo Code) doing context
+# condensing for effectively unlimited conversations. Push CTX_SIZE toward the
+# model's 262K native limit if VRAM allows; the model needs YaRN beyond that.
 ARGS=(
   -m "${MODEL_PATH}"
   --host 0.0.0.0
   --port "${ENGINE_PORT:-8001}"
   --alias "${SERVED_MODEL_NAME:-qwen3.6-35b-a3b}"
   -ngl "${N_GPU_LAYERS:-999}"          # offload all layers to GPU
-  -c "${CTX_SIZE:-65536}"              # total context (KV cache)
-  -np "${PARALLEL_SLOTS:-2}"           # continuous-batching slots
+  -c "${CTX_SIZE:-131072}"             # total context (KV cache); 128K default
+  -np "${PARALLEL_SLOTS:-1}"           # continuous-batching slots (1 = full ctx/req)
   -b "${BATCH_SIZE:-2048}"
   -ub "${UBATCH_SIZE:-512}"
   --cont-batching                      # continuous batching (throughput)
@@ -44,6 +46,15 @@ ARGS=(
   --reasoning-format "${REASONING_FORMAT:-auto}"   # split <think> into reasoning_content
   --metrics                            # Prometheus metrics at /metrics
   --threads "${THREADS:-8}"
+  # Default sampling = Qwen's recommended thinking/coding preset (temp 0.6,
+  # top_p 0.95, top_k 20, min_p 0, presence_penalty 0). These apply only when a
+  # request omits the parameter, so a client (Zoo Code) that sends its own
+  # temperature still wins. Override any via the SAMPLING_* env vars.
+  --temp "${SAMPLING_TEMP:-0.6}"
+  --top-p "${SAMPLING_TOP_P:-0.95}"
+  --top-k "${SAMPLING_TOP_K:-20}"
+  --min-p "${SAMPLING_MIN_P:-0.0}"
+  --presence-penalty "${SAMPLING_PRESENCE_PENALTY:-0.0}"
 )
 
 # Optional flags, only added when their env var is set.

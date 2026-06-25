@@ -74,8 +74,9 @@ RunPod → **Pods → Deploy**:
 |----------------------|--------------------------------------|----------------------------------------------------|
 | `GATEWAY_API_KEYS`   | `{{ RUNPOD_SECRET_gw_key }}`         | **Required.** The key(s) Zoo Code will send.       |
 | `ADMIN_API_KEY`      | `{{ RUNPOD_SECRET_admin_key }}`     | Unlocks `/admin/*` analytics. Optional.            |
-| `CTX_SIZE`           | `65536`                              | Total KV context (÷ `PARALLEL_SLOTS` per request). |
-| `PARALLEL_SLOTS`     | `2`                                  | Max concurrent requests.                           |
+| `CTX_SIZE`           | `131072`                             | Total KV context (128K). Model supports 262K native. |
+| `PARALLEL_SLOTS`     | `1`                                  | 1 = full context per request (raise for concurrency). |
+| `CACHE_TYPE_K/V`     | `q8_0`                               | Near-lossless KV quant so 128K fits on 48 GB.       |
 | `SERVED_MODEL_NAME`  | `qwen3.6-35b-a3b`                    | Must equal `DEFAULT_MODEL` (both default to this). |
 | `HF_TOKEN`           | `{{ RUNPOD_SECRET_hf }}`            | Only if the repo is gated.                          |
 
@@ -99,7 +100,7 @@ runpodctl pod create \
   --network-volume-id <your-network-volume-id> \
   --volume-mount-path /workspace \
   --ports '8000/http,22/tcp' \
-  --env '{"GATEWAY_API_KEYS":"sk-your-key","CTX_SIZE":"65536","PARALLEL_SLOTS":"2"}'
+  --env '{"GATEWAY_API_KEYS":"sk-your-key","CTX_SIZE":"131072","PARALLEL_SLOTS":"1"}'
 ```
 
 ---

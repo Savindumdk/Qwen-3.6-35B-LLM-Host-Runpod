@@ -40,7 +40,7 @@ Expand **Model Configuration** for the profile and set:
 
 | Setting           | Value     | Why                                                           |
 |-------------------|-----------|---------------------------------------------------------------|
-| Context Window    | `65536`   | Match your engine's effective per-request context (`CTX_SIZE ÷ PARALLEL_SLOTS`). Zoo Code uses this to manage/condense context. |
+| Context Window    | `131072`  | Match your engine's effective per-request context (`CTX_SIZE ÷ PARALLEL_SLOTS`; 128K with the defaults). Zoo Code uses this to manage/condense context. Also enable **Automatically condense context** for long sessions. |
 | Max Output Tokens | `8192`    | A sane cap for agent turns; raise if you want longer answers. |
 | Input Price       | `0`       | Self-hosted — silences cost estimates.                        |
 | Output Price      | `0`       | Same.                                                         |
