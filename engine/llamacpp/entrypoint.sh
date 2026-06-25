@@ -52,6 +52,26 @@ ARGS=(
 [[ -n "${CACHE_TYPE_K:-}" ]]        && ARGS+=( --cache-type-k "${CACHE_TYPE_K}" )
 [[ -n "${CACHE_TYPE_V:-}" ]]        && ARGS+=( --cache-type-v "${CACHE_TYPE_V}" )
 
-echo "[engine] starting llama-server: ${ARGS[*]} ${EXTRA_LLAMA_ARGS:-}"
+# Locate the llama-server binary. The official llama.cpp images ship it at a
+# fixed path with a full-path ENTRYPOINT (e.g. /app/llama-server) rather than on
+# PATH, so a bare `llama-server` call fails with "not found" (exit 127). Detect
+# it robustly so this works regardless of the base image's layout.
+LLAMA_BIN="$(command -v llama-server 2>/dev/null || true)"
+if [[ -z "${LLAMA_BIN}" ]]; then
+  for p in /app/llama-server /llama-server /usr/local/bin/llama-server \
+           /usr/bin/llama-server /opt/llama.cpp/llama-server /llama.cpp/llama-server; do
+    [[ -x "${p}" ]] && { LLAMA_BIN="${p}"; break; }
+  done
+fi
+if [[ -z "${LLAMA_BIN}" ]]; then
+  LLAMA_BIN="$(find / -maxdepth 6 -name llama-server -type f 2>/dev/null | head -n1)"
+fi
+if [[ -z "${LLAMA_BIN}" ]]; then
+  echo "FATAL: llama-server binary not found in image" >&2
+  exit 1
+fi
+
+echo "[engine] using llama-server at: ${LLAMA_BIN}"
+echo "[engine] starting: ${LLAMA_BIN} ${ARGS[*]} ${EXTRA_LLAMA_ARGS:-}"
 # EXTRA_LLAMA_ARGS is intentionally unquoted to allow passing several flags.
-exec llama-server "${ARGS[@]}" ${EXTRA_LLAMA_ARGS:-}
+exec "${LLAMA_BIN}" "${ARGS[@]}" ${EXTRA_LLAMA_ARGS:-}

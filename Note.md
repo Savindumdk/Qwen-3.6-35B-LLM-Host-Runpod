@@ -10,3 +10,7 @@ git init && git add . && git commit -m "Qwen3.6 OpenAI gateway + engine + RunPod
 git branch -M main
 git remote add origin https://github.com/<you>/<repo>.git
 git push -u origin main
+
+GATEWAY_API_KEYS =sk-0d96a943a4d3172cda11bfa059d61afe509765247ca6ad11
+
+https://cv1jhh7cdou16e-8000.proxy.runpod.net

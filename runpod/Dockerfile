@@ -25,7 +25,9 @@ RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 WORKDIR /app
 COPY gateway/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Gateway deps + the HuggingFace CLI with hf_transfer for fast, robust,
+# parallel-chunk model downloads (used by engine/scripts/download_model.sh).
+RUN pip install --no-cache-dir -r /app/requirements.txt "huggingface_hub[hf_transfer]"
 COPY gateway/app /app/app
 
 # --- engine scripts ----------------------------------------------------------
@@ -42,6 +44,7 @@ ENV MODEL_DIR=/workspace/models \
     HF_HOME=/workspace/hf \
     HF_HUB_CACHE=/workspace/hf \
     LLAMA_CACHE=/workspace/hf \
+    HF_HUB_ENABLE_HF_TRANSFER=1 \
     HF_REPO=unsloth/Qwen3.6-35B-A3B-GGUF \
     HF_FILE=Qwen3.6-35B-A3B-UD-IQ4_NL_XL.gguf \
     SERVED_MODEL_NAME=qwen3.6-35b-a3b \
