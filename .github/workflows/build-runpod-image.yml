@@ -1,0 +1,57 @@
+name: Build RunPod image
+
+# Builds the single-container RunPod image (llama.cpp engine + gateway) and
+# pushes it to GitHub Container Registry (GHCR). This runs on GitHub's
+# infrastructure, so the multi-GB image is built and pushed WITHOUT using your
+# local machine or bandwidth. The ~19.5 GB model is NOT in the image — it is
+# downloaded at runtime on the pod, so the image stays small.
+#
+# After the first successful run, the image is at:
+#   ghcr.io/<your-username>/qwen-runpod:latest
+# Make that package "Public" (GHCR package settings) OR add a RunPod registry
+# auth, then point your RunPod template at it. See docs/RUNPOD.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gateway/**"
+      - "engine/**"
+      - "runpod/**"
+      - ".github/workflows/build-runpod-image.yml"
+  workflow_dispatch: {}   # also runnable manually from the Actions tab
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image name
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/qwen-runpod" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: runpod/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

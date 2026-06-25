@@ -1,0 +1,28 @@
+# Secrets / local config
+.env
+
+# Model weights (downloaded at runtime; never commit ~19.5 GB)
+*.gguf
+models/
+hf/
+
+# Gateway runtime data
+gateway/data/
+data/
+*.db
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "huggingface": {
+      "command": "npx",
+      "args": ["-y", "@huggingface/mcp-server@latest"],
+      "env": {
+        "HF_TOKEN": "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"
+      }
+    },
+    "runpod": {
+      "command": "npx",
+      "args": ["-y", "@runpod/mcp-server@latest"],
+      "env": {
+        "RUNPOD_API_KEY": "rpa_0A6TINVABHOTI5IFZJAJCXFKTGRMFD3OPQC6SRIB2q0mfo"
+      }
+    }
+  }
+}

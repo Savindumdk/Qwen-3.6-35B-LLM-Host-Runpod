@@ -1,0 +1,108 @@
+# =============================================================================
+# Self-hosted OpenAI-compatible LLM platform
+#
+#   Zoo Code  ->  Gateway (FastAPI, this stack)  ->  Engine (llama.cpp | vLLM)
+#
+# Two interchangeable engine backends are defined behind Compose PROFILES. Both
+# register the network alias "engine", so the gateway always talks to
+# http://engine:8001/v1 regardless of which one you run — switching engines is a
+# one-word change on the command line, nothing in the gateway changes.
+#
+#   Run the llama.cpp engine (DEFAULT — serves your exact IQ4_NL GGUF):
+#       docker compose --profile llamacpp up -d --build
+#
+#   Run the vLLM engine instead (serves an AWQ quant; higher throughput):
+#       docker compose --profile vllm up -d --build
+#
+# Only the gateway port (8000) is published. The engine (8001) stays on the
+# internal network, reachable only via the authenticated gateway.
+# =============================================================================
+
+services:
+  gateway:
+    build:
+      context: ./gateway
+    image: qwen-gateway:latest
+    container_name: qwen-gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Both engine profiles answer to the "engine" alias on this network.
+      UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-http://engine:8001/v1}
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    volumes:
+      # Persist the analytics SQLite DB outside the container.
+      - gateway-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # --- llama.cpp engine (DEFAULT) -------------------------------------------
+  engine-llamacpp:
+    profiles: ["llamacpp"]
+    build:
+      context: .
+      dockerfile: engine/llamacpp/Dockerfile
+    image: qwen-engine-llamacpp:latest
+    container_name: qwen-engine-llamacpp
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      default:
+        aliases: [engine]
+    volumes:
+      - model-cache:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 300s   # large model can take minutes to load
+
+  # --- vLLM engine (ALTERNATIVE) --------------------------------------------
+  engine-vllm:
+    profiles: ["vllm"]
+    build:
+      context: .
+      dockerfile: engine/vllm/Dockerfile
+    image: qwen-engine-vllm:latest
+    container_name: qwen-engine-vllm
+    restart: unless-stopped
+    env_file: .env
+    ipc: host            # vLLM needs ample shared memory
+    networks:
+      default:
+        aliases: [engine]
+    volumes:
+      - model-cache:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8001/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 600s   # vLLM compiles/warms up; allow extra time
+
+volumes:
+  model-cache:
+  gateway-data:
+
+networks:
+  default:

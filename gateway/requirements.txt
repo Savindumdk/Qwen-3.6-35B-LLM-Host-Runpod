@@ -1,0 +1,17 @@
+# --- Gateway runtime dependencies -------------------------------------------
+# Pinned to recent, compatible majors. Re-pin exact versions with
+# `pip freeze > requirements.lock.txt` for fully reproducible builds.
+
+fastapi==0.115.6            # ASGI web framework
+uvicorn[standard]==0.34.0  # ASGI server (uvloop + httptools on Linux)
+httpx==0.28.1              # async HTTP client for the upstream proxy
+pydantic==2.10.4          # data validation
+pydantic-settings==2.7.1  # env-driven Settings
+
+# Analytics persistence (SQLite by default; Postgres via asyncpg if you switch
+# DATABASE_URL to postgresql+asyncpg://...).
+SQLAlchemy[asyncio]==2.0.36
+aiosqlite==0.20.0
+
+# Optional: uncomment if you point DATABASE_URL at Postgres.
+# asyncpg==0.30.0
